@@ -16,6 +16,11 @@ const PLAN_PRICE_MAP = {
     agency: process.env.STRIPE_PRICE_AGENCY,
 };
 
+function isStripeConfigured() {
+    const key = process.env.STRIPE_SECRET_KEY ?? '';
+    return key.startsWith('sk_') && !key.includes('...');
+}
+
 function getPaymentMethods(plan) {
     return [
         {
@@ -23,7 +28,8 @@ function getPaymentMethods(plan) {
             label: 'Card (Stripe)',
             badge: 'INSTANT',
             description: 'Visa / Mastercard via Stripe Checkout.',
-            enabled: Boolean(process.env.STRIPE_SECRET_KEY),
+            enabled: isStripeConfigured(),
+            setup_required: !isStripeConfigured(),
         },
         {
             id: 'mada_mobile_money',
@@ -67,6 +73,11 @@ function upsertUser(email) {
 router.post('/create-checkout', async (req, res) => {
     const { email, price_id, success_url, cancel_url } = req.body;
     if (!price_id) return res.status(400).json({ error: 'price_id is required.' });
+    if (!isStripeConfigured()) {
+        return res.status(503).json({
+            error: 'Stripe is not configured. Set a valid STRIPE_SECRET_KEY and price IDs in api/.env.',
+        });
+    }
 
     try {
         const params = {

@@ -133,6 +133,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <div class="form-group" style="margin-bottom:18px"><label>Password</label><input type="password" id="loginPass" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="current-password"></div>
     <div id="loginErr" class="alert ae" style="margin-bottom:14px;display:none"></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Sign In &#x2192;</button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;padding:11px;margin-top:8px" onclick="ownerAccess()">Owner Access (Admin Key)</button>
     <p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">Demo: <b>demo@wpai.com</b> / <b>demo</b></p>
   </div>
 </div>
@@ -419,6 +420,7 @@ const API = (location.protocol === 'file:' || (location.hostname === 'localhost'
 // ── State ──────────────────────────────────────────────────────────────────
 let token    = localStorage.getItem('wpai_tok') ?? null;
 let userData = JSON.parse(localStorage.getItem('wpai_user') ?? 'null');
+let adminKey = localStorage.getItem('wpai_admin_key') ?? '';
 let lastAnalysis = null;
 
 const DEMO_SITES = [
@@ -449,12 +451,31 @@ function doLogin() {
       .catch(() => showLoginErr('Cannot connect to API. Use demo@wpai.com / demo for demo.'));
   }
 }
+function ownerAccess() {
+  const key = prompt('Enter ADMIN_KEY from api/.env');
+  if (!key) return;
+  fetch(`${API}/admin/overview`, { headers: { 'x-admin-key': key.trim() } })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('Invalid admin key')))
+    .then(() => {
+      adminKey = key.trim();
+      localStorage.setItem('wpai_admin_key', adminKey);
+      token = 'owner-session';
+      userData = { id: -1, email: 'owner@wpai.local' };
+      localStorage.setItem('wpai_tok', token);
+      localStorage.setItem('wpai_user', JSON.stringify(userData));
+      showApp();
+      nav('admin', null);
+      adminRefreshAll();
+    })
+    .catch(() => showLoginErr('Owner access failed: invalid ADMIN_KEY or API unavailable.'));
+}
 function showLoginErr(msg) { const el=document.getElementById('loginErr'); el.textContent=msg; el.style.display='flex'; }
-function logout() { localStorage.removeItem('wpai_tok'); localStorage.removeItem('wpai_user'); location.reload(); }
+function logout() { localStorage.removeItem('wpai_tok'); localStorage.removeItem('wpai_user'); localStorage.removeItem('wpai_admin_key'); location.reload(); }
 function showApp() {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('uEmail').textContent = userData?.email ?? 'demo@wpai.com';
+  document.getElementById('adminKeyInput').value = adminKey;
   const initials = (userData?.email?.[0] ?? 'D').toUpperCase();
   document.getElementById('uAvatar').textContent = initials;
   renderDashboard();
@@ -640,7 +661,9 @@ function adminCreateLic() {
   const uid  = document.getElementById('adm-uid').value;
   const plan = document.getElementById('adm-plan').value;
   const days = document.getElementById('adm-days').value;
-  const key  = document.getElementById('adminKeyInput').value.trim();
+  const key  = (document.getElementById('adminKeyInput').value.trim() || adminKey);
+  adminKey = key;
+  if (adminKey) localStorage.setItem('wpai_admin_key', adminKey);
   if (!uid || !key) return alert('Fill in User ID and Admin Key.');
   fetch(`${API}/license/create`, {
     method:'POST', headers:{'Content-Type':'application/json','x-admin-key':key},
@@ -661,8 +684,10 @@ function adminRefreshAll() {
 }
 
 function adminLoadOverview() {
-  const key = document.getElementById('adminKeyInput').value.trim();
+  const key = (document.getElementById('adminKeyInput').value.trim() || adminKey);
   if (!key) return;
+  adminKey = key;
+  localStorage.setItem('wpai_admin_key', adminKey);
   fetch(`${API}/admin/overview`, { headers: { 'x-admin-key': key } })
     .then(r => r.json())
     .then(d => {
@@ -676,8 +701,10 @@ function adminLoadOverview() {
 }
 
 function adminLoadMobileMoneyIntents() {
-  const key = document.getElementById('adminKeyInput').value.trim();
+  const key = (document.getElementById('adminKeyInput').value.trim() || adminKey);
   if (!key) return;
+  adminKey = key;
+  localStorage.setItem('wpai_admin_key', adminKey);
   fetch(`${API}/stripe/mobile-money/intents`, { headers: { 'x-admin-key': key } })
     .then(r => r.json())
     .then(d => {
@@ -703,8 +730,10 @@ function adminLoadMobileMoneyIntents() {
 }
 
 function adminMarkPaid(reference) {
-  const key = document.getElementById('adminKeyInput').value.trim();
+  const key = (document.getElementById('adminKeyInput').value.trim() || adminKey);
   if (!key) return alert('Enter ADMIN_KEY first.');
+  adminKey = key;
+  localStorage.setItem('wpai_admin_key', adminKey);
   fetch(`${API}/stripe/mobile-money/intents/${reference}/mark-paid`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
