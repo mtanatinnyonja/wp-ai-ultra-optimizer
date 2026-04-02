@@ -580,10 +580,7 @@ function quickAnalyze(url) {
 async function generateCriticalCSS() {
   const url = document.getElementById('analyzeUrl').value.trim();
   if (!url) return alert('Please enter a URL first.');
-  alert('&#x1F3A8; Critical CSS generation started for:
-' + url + '
-
-In production this calls /api/optimize/critical-css via Puppeteer and returns the CSS to inject.');
+  alert(`Critical CSS generation started for:\n${url}\n\nIn production this calls /api/optimize/critical-css via Puppeteer and returns the CSS to inject.`);
 }
 function copyReport() {
   if (!lastAnalysis) return;
