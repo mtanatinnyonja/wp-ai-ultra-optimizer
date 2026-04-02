@@ -1,0 +1,13 @@
+{
+  "name": "wp-ai-ultra-optimizer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Frontend server for WP AI Ultra Optimizer",
+  "main": "frontend-server.js",
+  "scripts": {
+    "front": "node frontend-server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,8 +1,10 @@
 'use strict';
 const router = require('express').Router();
+const crypto = require('crypto');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createLicense, deactivateLicense, extendLicense } = require('../services/licenseService');
 const { getDb } = require('../services/dbService');
+const { requireAdmin } = require('../middleware/auth');
 
 const PLAN_MAP = {
     [process.env.STRIPE_PRICE_PRO]:    'pro',
@@ -15,7 +17,7 @@ const PLAN_PRICE_MAP = {
 };
 
 function getPaymentMethods(plan) {
-    const methods = [
+    return [
         {
             id: 'stripe_card',
             label: 'Card (Stripe)',
@@ -29,15 +31,25 @@ function getPaymentMethods(plan) {
             badge: 'MADA',
             description: process.env.MADA_MOBILE_MONEY_CHECKOUT_URL
                 ? 'Mvola, Orange Money, Airtel Money via local payment partner.'
-                : 'Mvola, Orange Money, Airtel Money (setup pending).',
-            enabled: Boolean(process.env.MADA_MOBILE_MONEY_CHECKOUT_URL),
+                : 'Mvola, Orange Money, Airtel Money with manual confirmation fallback.',
+            enabled: true,
             setup_required: !process.env.MADA_MOBILE_MONEY_CHECKOUT_URL,
             provider: process.env.MADA_MOBILE_MONEY_PROVIDER ?? 'local-partner',
             plan,
         },
     ];
+}
 
-    return methods;
+function createPaymentIntent({ email, plan, method, provider, success_url, cancel_url }) {
+    const reference = `MM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    const amountLabel = plan === 'agency' ? 'EUR 29 / month' : 'EUR 10 / month';
+    const db = getDb();
+    db.prepare(`
+        INSERT INTO payment_intents
+        (reference, email, plan, method, provider, amount_label, status, success_url, cancel_url, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, unixepoch(), unixepoch())
+    `).run(reference, email ?? null, plan, method, provider, amountLabel, success_url ?? null, cancel_url ?? null);
+    return { reference, amountLabel };
 }
 
 // Helper: find or create a user by email
@@ -89,24 +101,140 @@ router.get('/payment-options', (req, res) => {
 // POST /api/stripe/create-mobile-money-intent
 router.post('/create-mobile-money-intent', (req, res) => {
     const plan = ['pro', 'agency'].includes(req.body.plan) ? req.body.plan : 'pro';
+    const email = typeof req.body.email === 'string' ? req.body.email.trim() : null;
     const providerUrl = process.env.MADA_MOBILE_MONEY_CHECKOUT_URL;
+    const providerName = process.env.MADA_MOBILE_MONEY_PROVIDER ?? 'local-partner';
+
+    const intent = createPaymentIntent({
+        email,
+        plan,
+        method: 'mada_mobile_money',
+        provider: providerName,
+        success_url: req.body.success_url,
+        cancel_url: req.body.cancel_url,
+    });
 
     if (!providerUrl) {
-        return res.status(503).json({
-            error: 'Mobile money checkout is not configured yet. Set MADA_MOBILE_MONEY_CHECKOUT_URL.',
+        const origin = req.headers.origin ?? `${req.protocol}://${req.get('host')}`;
+        return res.json({
+            provider: providerName,
+            plan,
+            reference: intent.reference,
+            mode: 'manual-fallback',
+            url: `${origin}/api/stripe/mobile-money/checkout/${intent.reference}`,
         });
     }
 
     const url = new URL(providerUrl);
     url.searchParams.set('plan', plan);
     url.searchParams.set('price_id', PLAN_PRICE_MAP[plan] ?? process.env.STRIPE_PRICE_PRO ?? '');
+    url.searchParams.set('reference', intent.reference);
+    if (email) url.searchParams.set('email', email);
     if (req.body.success_url) url.searchParams.set('success_url', req.body.success_url);
     if (req.body.cancel_url) url.searchParams.set('cancel_url', req.body.cancel_url);
 
     return res.json({
-        provider: process.env.MADA_MOBILE_MONEY_PROVIDER ?? 'local-partner',
+        provider: providerName,
         plan,
+        reference: intent.reference,
+        mode: 'provider-hosted',
         url: url.toString(),
+    });
+});
+
+// GET /api/stripe/mobile-money/checkout/:reference
+router.get('/mobile-money/checkout/:reference', (req, res) => {
+    const db = getDb();
+    const intent = db.prepare('SELECT * FROM payment_intents WHERE reference = ?').get(req.params.reference);
+    if (!intent) return res.status(404).send('Payment reference not found.');
+
+    const supportEmail = process.env.MADA_SUPPORT_EMAIL ?? 'billing@wpai.com';
+    const provider = intent.provider ?? 'local-partner';
+
+    return res.send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mobile Money Checkout</title>
+<style>
+body{font-family:Arial,sans-serif;background:#06101a;color:#dff0fb;padding:24px}
+.card{max-width:680px;margin:0 auto;background:#0f1e2d;border:1px solid #1e3347;border-radius:12px;padding:20px}
+h1{margin:0 0 10px;font-size:22px}.muted{color:#8caec8}.row{margin:8px 0}
+input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #29445f;background:#071424;color:#dff0fb}
+button{margin-top:12px;padding:10px 16px;border:none;border-radius:8px;background:#00d4ff;color:#032030;font-weight:700;cursor:pointer}
+.ref{font-family:monospace;background:#081726;padding:4px 8px;border-radius:6px}
+</style></head><body>
+<div class="card">
+<h1>Mobile Money Checkout</h1>
+<p class="muted">Provider: ${provider} | Plan: ${intent.plan.toUpperCase()} | Amount: ${intent.amount_label}</p>
+<p>Reference: <span class="ref">${intent.reference}</span></p>
+<p class="muted">Pay with Mvola, Orange Money, or Airtel Money, then submit your transaction details below for instant admin validation.</p>
+<form method="post" action="/api/stripe/mobile-money/confirm/${intent.reference}">
+<div class="row"><label>Payer name</label><input name="payer_name" required></div>
+<div class="row"><label>Phone number</label><input name="payer_phone" required placeholder="034 / 032 / 033..."></div>
+<div class="row"><label>Network</label><select name="network"><option>Mvola</option><option>Orange Money</option><option>Airtel Money</option></select></div>
+<div class="row"><label>Transaction reference</label><input name="external_ref" required></div>
+<button type="submit">Submit payment proof</button>
+</form>
+<p class="muted" style="margin-top:14px">Need help: ${supportEmail}</p>
+</div></body></html>`);
+});
+
+// POST /api/stripe/mobile-money/confirm/:reference
+router.post('/mobile-money/confirm/:reference', (req, res) => {
+    const db = getDb();
+    const intent = db.prepare('SELECT * FROM payment_intents WHERE reference = ?').get(req.params.reference);
+    if (!intent) return res.status(404).send('Payment reference not found.');
+
+    const extRef = String(req.body.external_ref ?? '').trim();
+    if (!extRef) return res.status(400).send('Transaction reference is required.');
+
+    const note = [
+        String(req.body.payer_name ?? '').trim(),
+        String(req.body.payer_phone ?? '').trim(),
+        String(req.body.network ?? '').trim(),
+    ].filter(Boolean).join(' | ');
+
+    db.prepare(`
+        UPDATE payment_intents
+        SET status='submitted', external_ref=?, provider=?, updated_at=unixepoch()
+        WHERE reference=?
+    `).run(`${extRef}${note ? ` | ${note}` : ''}`, intent.provider, req.params.reference);
+
+    return res.send('Payment proof submitted. Admin will validate and activate your license soon.');
+});
+
+// GET /api/stripe/mobile-money/intents (admin)
+router.get('/mobile-money/intents', requireAdmin, (req, res) => {
+    const db = getDb();
+    const intents = db.prepare(`
+        SELECT reference, email, plan, method, provider, amount_label, status, external_ref, created_at, updated_at
+        FROM payment_intents
+        ORDER BY created_at DESC
+        LIMIT 200
+    `).all();
+    res.json({ intents });
+});
+
+// POST /api/stripe/mobile-money/intents/:reference/mark-paid (admin)
+router.post('/mobile-money/intents/:reference/mark-paid', requireAdmin, (req, res) => {
+    const db = getDb();
+    const intent = db.prepare('SELECT * FROM payment_intents WHERE reference = ?').get(req.params.reference);
+    if (!intent) return res.status(404).json({ error: 'Payment intent not found.' });
+
+    db.prepare("UPDATE payment_intents SET status='paid', updated_at=unixepoch() WHERE reference=?")
+      .run(req.params.reference);
+
+    let license = null;
+    if (intent.email) {
+        const user = upsertUser(intent.email);
+        const expiresAt = Math.floor(Date.now() / 1000) + 32 * 86400;
+        license = createLicense(user.id, intent.plan, `manual-${intent.reference}`, expiresAt);
+    }
+
+    res.json({
+        ok: true,
+        reference: intent.reference,
+        status: 'paid',
+        license_key: license,
     });
 });
 

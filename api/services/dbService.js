@@ -46,9 +46,26 @@ function initDb() {
             site_url    TEXT,
             ts          INTEGER DEFAULT (unixepoch())
         );
+        CREATE TABLE IF NOT EXISTS payment_intents (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference      TEXT    UNIQUE NOT NULL,
+            email          TEXT,
+            plan           TEXT    NOT NULL,
+            method         TEXT    NOT NULL,
+            provider       TEXT,
+            amount_label   TEXT,
+            status         TEXT    NOT NULL DEFAULT 'pending',
+            external_ref   TEXT,
+            success_url    TEXT,
+            cancel_url     TEXT,
+            created_at     INTEGER DEFAULT (unixepoch()),
+            updated_at     INTEGER DEFAULT (unixepoch())
+        );
         CREATE INDEX IF NOT EXISTS idx_lic_key ON licenses(license_key);
         CREATE INDEX IF NOT EXISTS idx_lic_sub ON licenses(stripe_sub_id);
         CREATE INDEX IF NOT EXISTS idx_log_ts  ON api_logs(ts);
+        CREATE INDEX IF NOT EXISTS idx_pi_ref  ON payment_intents(reference);
+        CREATE INDEX IF NOT EXISTS idx_pi_stat ON payment_intents(status);
     `);
 
     console.log('[DB] SQLite ready:', dbPath);

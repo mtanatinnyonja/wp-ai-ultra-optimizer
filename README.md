@@ -39,6 +39,18 @@ Open `dashboard/index.html` — or deploy to any static host.
 ### 4. Landing Page
 Open `landing/index.html` — deploy to Netlify, Vercel, or any web host.
 
+### 5. Secure Local Frontend (recommended)
+```bash
+npm install
+npm run front
+```
+
+Then open:
+- `http://localhost:8080/landing`
+- `http://localhost:8080/dashboard`
+
+This avoids file directory listing exposure from generic static servers.
+
 ## Configuration
 
 ### API `.env` keys required

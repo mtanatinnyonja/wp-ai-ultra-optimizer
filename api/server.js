@@ -13,10 +13,18 @@ const PORT = process.env.PORT || 3000;
 
 // ── Security middleware ──────────────────────────────────────────────────────
 app.use(helmet());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',')
-        : '*',
+    origin(origin, cb) {
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.length === 0) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        if (/^https?:\/\/localhost(?::\d+)?$/i.test(origin)) return cb(null, true);
+        return cb(new Error('CORS origin denied'));
+    },
 }));
 
 // Stripe webhook needs the raw body – register BEFORE json()
@@ -37,6 +45,7 @@ app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/license',  require('./routes/license'));
 app.use('/api/stripe',   require('./routes/stripe'));
 app.use('/api/optimize', require('./routes/optimize'));
+app.use('/api/admin',    require('./routes/admin'));
 
 // Health check
 app.get('/health', (_, res) => res.json({

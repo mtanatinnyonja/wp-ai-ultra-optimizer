@@ -335,7 +335,9 @@ footer{border-top:1px solid var(--border);padding:40px;text-align:center;color:v
 </div>
 
 <script>
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+const API_BASE = (location.protocol === 'file:' || (location.hostname === 'localhost' && location.port === '8080'))
+  ? 'http://localhost:3000/api'
+  : `${location.origin}/api`;
 const PRICES = { pro:'price_pro_monthly', agency:'price_agency_monthly' };
 let selectedPlan = 'pro';
 
@@ -392,12 +394,14 @@ function renderPaymentOptions(options, note){
 }
 
 async function startCheckout(method){
+  const email = window.prompt('Email for invoice/license delivery (optional):', '') || '';
   if (method === 'stripe_card') {
     try {
       const r = await fetch(`${API_BASE}/stripe/create-checkout`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
+          email,
           price_id: PRICES[selectedPlan],
           success_url: window.location.origin + '/success',
           cancel_url: window.location.href
@@ -421,6 +425,7 @@ async function startCheckout(method){
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
+          email,
           plan: selectedPlan,
           success_url: window.location.origin + '/success',
           cancel_url: window.location.href

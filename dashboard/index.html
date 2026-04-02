@@ -375,6 +375,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <div class="card"><div class="card-val" id="as-lic">—</div><div class="card-lbl">Active Licenses</div></div>
       <div class="card"><div class="card-val" id="as-sites">—</div><div class="card-lbl">Registered Sites</div></div>
       <div class="card"><div class="card-val" id="as-calls">—</div><div class="card-lbl">API Calls Today</div></div>
+      <div class="card"><div class="card-val" id="as-mm">—</div><div class="card-lbl">Pending Mobile Money</div></div>
     </div>
 
     <div class="card">
@@ -392,6 +393,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       &#x2139;&#xFE0F; This panel makes live API calls to <code style="font-family:var(--mono)">http://localhost:3000/api</code>.
       Set <code style="font-family:var(--mono)">ADMIN_KEY</code> in your .env and enter it below to unlock admin routes.
       <input id="adminKeyInput" style="margin-left:10px;width:280px;padding:5px 10px;font-size:12px" placeholder="Enter ADMIN_KEY from .env">
+      <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="adminRefreshAll()">Refresh</button>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Mobile Money Intents</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Reference</th><th>Plan</th><th>Status</th><th>Email</th><th>External Ref</th><th>Actions</th></tr></thead>
+          <tbody id="adm-mm-tbl"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -400,7 +412,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 </div><!-- /app -->
 
 <script>
-const API = 'http://localhost:3000/api';
+const API = (location.protocol === 'file:' || (location.hostname === 'localhost' && location.port === '8080'))
+  ? 'http://localhost:3000/api'
+  : `${location.origin}/api`;
 
 // ── State ──────────────────────────────────────────────────────────────────
 let token    = localStorage.getItem('wpai_tok') ?? null;
@@ -455,6 +469,7 @@ function nav(id, el) {
   document.getElementById('page-'+id).classList.add('active');
   if (el) el.classList.add('active');
   else { document.querySelectorAll('.nav-item').forEach(n => { if (n.getAttribute('onclick')?.includes("'"+id+"'")) n.classList.add('active'); }); }
+  if (id === 'admin') adminRefreshAll();
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -636,6 +651,69 @@ function adminCreateLic() {
     const el = document.getElementById('adm-result');
     el.style.display = 'block';
     el.textContent = d.license_key ? '&#x2713; ' + d.license_key : JSON.stringify(d);
+  })
+  .catch(e => alert('API error: ' + e.message));
+}
+
+function adminRefreshAll() {
+  adminLoadOverview();
+  adminLoadMobileMoneyIntents();
+}
+
+function adminLoadOverview() {
+  const key = document.getElementById('adminKeyInput').value.trim();
+  if (!key) return;
+  fetch(`${API}/admin/overview`, { headers: { 'x-admin-key': key } })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('as-users').textContent = d.total_users ?? '—';
+      document.getElementById('as-lic').textContent = d.active_licenses ?? '—';
+      document.getElementById('as-sites').textContent = d.registered_sites ?? '—';
+      document.getElementById('as-calls').textContent = d.api_calls_today ?? '—';
+      document.getElementById('as-mm').textContent = d.pending_mobile_money ?? '—';
+    })
+    .catch(() => {});
+}
+
+function adminLoadMobileMoneyIntents() {
+  const key = document.getElementById('adminKeyInput').value.trim();
+  if (!key) return;
+  fetch(`${API}/stripe/mobile-money/intents`, { headers: { 'x-admin-key': key } })
+    .then(r => r.json())
+    .then(d => {
+      const rows = Array.isArray(d.intents) ? d.intents : [];
+      const tbody = document.getElementById('adm-mm-tbl');
+      tbody.innerHTML = '';
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">No mobile money payment intents yet.</td></tr>';
+        return;
+      }
+      rows.forEach(row => {
+        tbody.innerHTML += `<tr>
+          <td style="font-family:var(--mono)">${row.reference}</td>
+          <td>${(row.plan || '').toUpperCase()}</td>
+          <td>${row.status}</td>
+          <td>${row.email || '-'}</td>
+          <td style="font-family:var(--mono)">${row.external_ref || '-'}</td>
+          <td>${row.status === 'paid' ? 'Paid' : `<button class="btn btn-primary btn-sm" onclick="adminMarkPaid('${row.reference}')">Mark Paid</button>`}</td>
+        </tr>`;
+      });
+    })
+    .catch(() => {});
+}
+
+function adminMarkPaid(reference) {
+  const key = document.getElementById('adminKeyInput').value.trim();
+  if (!key) return alert('Enter ADMIN_KEY first.');
+  fetch(`${API}/stripe/mobile-money/intents/${reference}/mark-paid`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) return alert(d.error);
+    adminRefreshAll();
+    alert(`Payment ${reference} marked as paid.` + (d.license_key ? ` License: ${d.license_key}` : ''));
   })
   .catch(e => alert('API error: ' + e.message));
 }
