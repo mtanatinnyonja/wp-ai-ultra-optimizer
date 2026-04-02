@@ -22,7 +22,7 @@
 <div class="wpai-wrap">
   <div class="wpai-header">
     <span style="font-size:36px">⚡</span>
-    <div><h1>WP AI Ultra Optimizer</h1><p style="margin:4px 0 0;opacity:.7">v5.0.0 — <?php echo esc_html(home_url()); ?></p></div>
+    <div><h1>WP AI Ultra Optimizer</h1><p style="margin:4px 0 0;opacity:.7">v1.0.0 — <?php echo esc_html(home_url()); ?></p></div>
     <span class="wpai-badge"><?php echo esc_html(strtoupper($plan)); ?></span>
   </div>
   <div class="wpai-cards">

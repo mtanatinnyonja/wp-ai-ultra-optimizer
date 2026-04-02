@@ -1,4 +1,4 @@
-# ⚡ WP AI Ultra Optimizer v5.0.0
+# ⚡ WP AI Ultra Optimizer v1.0.0
 
 > WordPress performance SaaS — Cache + AI Critical CSS + Stripe licensing
 

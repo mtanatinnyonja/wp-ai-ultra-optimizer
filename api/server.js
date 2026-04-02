@@ -41,7 +41,7 @@ app.use('/api/optimize', require('./routes/optimize'));
 // Health check
 app.get('/health', (_, res) => res.json({
     status: 'ok',
-    version: '5.0.0',
+    version: '1.0.0',
     ts: Date.now(),
 }));
 

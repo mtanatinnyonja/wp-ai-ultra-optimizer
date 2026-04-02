@@ -3,7 +3,7 @@
  * Plugin Name: WP AI Ultra Optimizer
  * Plugin URI:  https://wp-ai-optimizer.com
  * Description: AI-powered performance optimizer. Cache, Critical CSS, Lazy Load, JS delay & more.
- * Version:     5.0.0
+ * Version:     1.0.0
  * Author:      WP AI Ultra Team
  * License:     GPL-2.0+
  * Text Domain: wpai
@@ -13,7 +13,7 @@
 
 defined('ABSPATH') || exit;
 
-define('WPAI_VERSION', '5.0.0');
+define('WPAI_VERSION', '1.0.0');
 define('WPAI_URL',     plugin_dir_url(__FILE__));
 define('WPAI_PATH',    plugin_dir_path(__FILE__));
 define('WPAI_API',     'https://your-saas.com/api');
