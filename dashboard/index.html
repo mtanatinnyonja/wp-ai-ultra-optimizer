@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WP AI Ultra Optimizer v5 — Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07101a;--surface:#0f1e2d;--s2:#162436;--border:#1e3347;
+  --accent:#00d4ff;--purple:#7c3aed;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;
+  --text:#dff0fb;--muted:#5a7d99;--font:'Outfit',sans-serif;--mono:'DM Mono',monospace
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column}
+
+/* ── Login ── */
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px;padding:20px}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px}
+.login-box h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.login-box p{color:var(--muted);font-size:13px;margin-bottom:24px}
+
+/* ── App shell ── */
+#app{flex:1;display:none;overflow:hidden}
+.shell{height:100%;display:flex}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sidebar-logo{padding:20px 20px 18px;font-size:17px;font-weight:800;border-bottom:1px solid var(--border);cursor:default}
+.sidebar-logo span{color:var(--accent)}
+.nav-section{padding:12px 12px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:0 8px;color:var(--muted);font-size:14px;font-weight:500;cursor:pointer;border-radius:8px;transition:.15s;border:none;background:none;width:calc(100% - 16px);text-align:left}
+.nav-item:hover{background:var(--s2);color:var(--text)}
+.nav-item.active{background:rgba(0,212,255,.1);color:var(--accent)}
+.sidebar-footer{margin-top:auto;padding:16px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px;background:var(--s2);border-radius:8px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#04090f;flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-plan{font-size:11px;color:var(--muted)}
+.logout-btn{width:100%;margin-top:8px;padding:7px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font)}
+.logout-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* ── Main area ── */
+.main{flex:1;overflow-y:auto;padding:32px;display:flex;flex-direction:column}
+.page{display:none;flex-direction:column;gap:24px;animation:fadeIn .25s ease}
+.page.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-header h1{font-size:22px;font-weight:700}
+.page-header p{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* ── Cards / grid ── */
+.grid{display:grid;gap:16px}
+.g-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.g-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.g-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card-val{font-size:30px;font-weight:800;font-family:var(--mono);line-height:1}
+.card-lbl{color:var(--muted);font-size:11px;margin-top:5px;text-transform:uppercase;letter-spacing:.06em}
+.card-hl{border-color:var(--accent);background:linear-gradient(135deg,#071f2e,#0c2d42)}
+.card-purple{border-color:var(--purple);background:linear-gradient(135deg,#110a1f,#1a0d30)}
+
+/* ── Table ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 16px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);font-weight:600;background:var(--s2)}
+td{padding:11px 16px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(30,51,71,.4)}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.bp{background:rgba(0,212,255,.12);color:var(--accent)}
+.bf{background:rgba(90,125,153,.12);color:var(--muted)}
+.ba{background:rgba(124,58,237,.15);color:#a78bfa}
+.bs{background:rgba(16,185,129,.12);color:var(--green)}
+.be{background:rgba(239,68,68,.12);color:var(--red)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--font);transition:.15s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#04090f}.btn-primary:hover{filter:brightness(1.1)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)}.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{filter:brightness(1.1)}
+
+/* ── Form ── */
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input,select,textarea{background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;font-family:var(--font);outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.form-row{display:flex;gap:12px;align-items:flex-end}
+
+/* ── Alerts ── */
+.alert{padding:11px 15px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:10px}
+.ai{background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:var(--accent)}
+.as{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);color:var(--green)}
+.aw{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);color:var(--yellow)}
+.ae{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);color:var(--red)}
+
+/* ── Vitals ── */
+.vitals-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.vital{background:var(--s2);border-radius:10px;padding:16px;text-align:center}
+.vital-val{font-size:22px;font-weight:800;font-family:var(--mono)}
+.vital-lbl{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+.good{color:var(--green)}.med{color:var(--yellow)}.bad{color:var(--red)}
+
+/* ── Spinner ── */
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Suggestion cards ── */
+.suggestion{padding:12px 15px;border-radius:8px;border:1px solid var(--border);background:var(--s2);font-size:13px;display:flex;align-items:flex-start;gap:10px}
+.sug-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.sug-text{flex:1}
+.sug-impact{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.high{color:var(--red)}.medium{color:var(--yellow)}.low{color:var(--green)}
+
+/* ── Progress bar ── */
+.progress{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;border-radius:3px;transition:width .6s ease}
+.pb-good{background:var(--green)}.pb-med{background:var(--yellow)}.pb-bad{background:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═════════════════════════════════════════════════════════════════ -->
+<div class="login-wrap" id="loginWrap">
+  <div style="font-size:20px;font-weight:800">&#x26A1; <span style="color:var(--accent)">WP AI</span> Ultra Optimizer <span style="color:var(--muted);font-size:13px;font-weight:400">v5.0.0</span></div>
+  <div class="login-box">
+    <h2>Welcome back</h2>
+    <p>Sign in to your performance dashboard</p>
+    <div class="form-group" style="margin-bottom:14px"><label>Email</label><input type="email" id="loginEmail" placeholder="demo@wpai.com" autocomplete="email"></div>
+    <div class="form-group" style="margin-bottom:18px"><label>Password</label><input type="password" id="loginPass" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="current-password"></div>
+    <div id="loginErr" class="alert ae" style="margin-bottom:14px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="doLogin()">Sign In &#x2192;</button>
+    <p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">Demo: <b>demo@wpai.com</b> / <b>demo</b></p>
+  </div>
+</div>
+
+<!-- ═══ APP ═══════════════════════════════════════════════════════════════════ -->
+<div id="app">
+<div class="shell">
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">&#x26A1; <span>WP AI</span> Optimizer</div>
+  <div class="nav-section">Main</div>
+  <button class="nav-item active" onclick="nav('dashboard',this)">&#x1F4CA; Dashboard</button>
+  <button class="nav-item" onclick="nav('sites',this)">&#x1F310; My Sites</button>
+  <button class="nav-item" onclick="nav('performance',this)">&#x1F680; Performance</button>
+  <div class="nav-section">Account</div>
+  <button class="nav-item" onclick="nav('license',this)">&#x1F511; License</button>
+  <button class="nav-item" onclick="nav('billing',this)">&#x1F4B3; Billing</button>
+  <div class="nav-section">Admin</div>
+  <button class="nav-item" onclick="nav('admin',this)">&#x2699;&#xFE0F; Admin Panel</button>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar" id="uAvatar">D</div>
+      <div><div class="user-name" id="uEmail">demo@wpai.com</div><div class="user-plan" id="uPlan">PRO Plan</div></div>
+    </div>
+    <button class="logout-btn" onclick="logout()">&#x2192; Sign Out</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- DASHBOARD ──────────────────────────────────────────────────── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div><h1>Dashboard</h1><p>Performance overview across all your sites</p></div>
+      <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">&#x21BB; Refresh</button>
+    </div>
+
+    <div class="grid g-4">
+      <div class="card card-hl">
+        <div class="card-val" id="d-sites">3</div>
+        <div class="card-lbl">Connected Sites</div>
+      </div>
+      <div class="card">
+        <div class="card-val good" id="d-score">87</div>
+        <div class="card-lbl">Avg PageSpeed</div>
+      </div>
+      <div class="card">
+        <div class="card-val" id="d-plan" style="font-size:20px">PRO</div>
+        <div class="card-lbl">Active Plan</div>
+      </div>
+      <div class="card">
+        <div class="card-val" id="d-cache">142 KB</div>
+        <div class="card-lbl">Cache Served</div>
+      </div>
+    </div>
+
+    <div id="d-ai-tip" class="alert ai">&#x1F916; <span>Analyzing your sites…</span></div>
+
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h2 style="font-size:15px;font-weight:700">Recent Sites</h2>
+        <button class="btn btn-ghost btn-sm" onclick="nav('sites',null)">View all &#x2192;</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Site URL</th><th>Score</th><th>LCP</th><th>Plan</th><th></th></tr></thead>
+          <tbody id="d-sites-tbl"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SITES ──────────────────────────────────────────────────────── -->
+  <div class="page" id="page-sites">
+    <div class="page-header">
+      <div><h1>My Sites</h1><p>All connected WordPress installations</p></div>
+      <button class="btn btn-primary btn-sm" onclick="showAddSite()">+ Add Site</button>
+    </div>
+
+    <div id="add-site-form" class="card" style="display:none">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Connect a new WordPress site</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>Site URL</label><input id="newUrl" type="url" placeholder="https://mysite.com"></div>
+        <div class="form-group" style="width:140px"><label>Plan</label>
+          <select id="newPlan"><option value="free">FREE</option><option value="pro" selected>PRO</option><option value="agency">AGENCY</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="addSite()" style="align-self:flex-end">Add</button>
+        <button class="btn btn-ghost" onclick="hideAddSite()" style="align-self:flex-end">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>URL</th><th>Score</th><th>LCP</th><th>Plan</th><th>Last Seen</th><th>Actions</th></tr></thead>
+        <tbody id="sites-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE ────────────────────────────────────────────────── -->
+  <div class="page" id="page-performance">
+    <div class="page-header">
+      <div><h1>Performance Analysis</h1><p>Core Web Vitals &amp; AI-powered optimization insights</p></div>
+    </div>
+
+    <div class="card">
+      <div class="form-row" style="flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:200px"><label>URL to analyze</label><input id="analyzeUrl" type="url" placeholder="https://yoursite.com" onkeydown="if(event.key==='Enter')analyzeSite()"></div>
+        <div class="form-group" style="width:130px"><label>Device</label><select id="analyzeDevice"><option value="mobile">Mobile</option><option value="desktop">Desktop</option></select></div>
+        <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeSite()" style="align-self:flex-end">&#x1F50D; Analyze</button>
+      </div>
+    </div>
+
+    <div id="perf-loading" style="display:none" class="alert ai">
+      <div class="spinner"></div>
+      <span>Analyzing page performance — this may take a few seconds…</span>
+    </div>
+
+    <div id="perf-results" style="display:none;flex-direction:column;gap:16px">
+      <div class="grid g-4">
+        <div class="card card-hl">
+          <div class="card-val" id="r-score">—</div>
+          <div class="card-lbl">PageSpeed Score</div>
+          <div style="margin-top:10px"><div class="progress"><div class="progress-bar" id="r-score-bar" style="width:0%"></div></div></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:10px">Core Web Vitals</h3>
+        <div class="vitals-row">
+          <div class="vital"><div class="vital-val" id="r-lcp">—</div><div class="vital-lbl">LCP</div></div>
+          <div class="vital"><div class="vital-val" id="r-cls">—</div><div class="vital-lbl">CLS</div></div>
+          <div class="vital"><div class="vital-val" id="r-inp">—</div><div class="vital-lbl">INP</div></div>
+          <div class="vital"><div class="vital-val" id="r-ttfb">—</div><div class="vital-lbl">TTFB</div></div>
+          <div class="vital"><div class="vital-val" id="r-fcp">—</div><div class="vital-lbl">FCP</div></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:10px">&#x1F916; AI Optimization Suggestions</h3>
+        <div id="r-suggestions" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="generateCriticalCSS()">&#x1F3A8; Generate Critical CSS (PRO)</button>
+        <button class="btn btn-ghost" onclick="copyReport()">&#x1F4CB; Copy Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LICENSE ─────────────────────────────────────────────────────── -->
+  <div class="page" id="page-license">
+    <div class="page-header"><div><h1>License</h1><p>Manage your WP AI Ultra Optimizer license key</p></div></div>
+
+    <div class="grid g-2">
+      <div class="card card-hl">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div class="card-val" style="font-size:20px" id="l-plan">PRO</div><div class="card-lbl">Current Plan</div></div>
+          <span class="badge bs" id="l-status">Active</span>
+        </div>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;font-size:13px">
+          <div><span style="color:var(--muted)">Key:</span> <span style="font-family:var(--mono);font-size:12px" id="l-key">WPAI-****-****-****</span></div>
+          <div><span style="color:var(--muted)">Expires:</span> <span id="l-exp">2026-12-31</span></div>
+          <div><span style="color:var(--muted)">Sites allowed:</span> <span id="l-sites">1</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Activate New Key</h3>
+        <div class="form-group" style="margin-bottom:12px"><label>License Key</label><input id="newLicKey" placeholder="WPAI-XXXX-XXXX-XXXX-XXXX" style="font-family:var(--mono);font-size:13px"></div>
+        <button class="btn btn-primary" onclick="activateLic()">Activate License</button>
+        <div id="lic-msg" style="margin-top:10px;display:none;font-size:13px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">WordPress Plugin Setup</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">After installing the WP plugin, enter your license key in: <b>AI Optimizer &#x2192; License</b></p>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;color:var(--accent)">
+        define('WPAI_API', 'https://your-api.com/api');
+      </div>
+    </div>
+  </div>
+
+  <!-- BILLING ─────────────────────────────────────────────────────── -->
+  <div class="page" id="page-billing">
+    <div class="page-header"><div><h1>Plans &amp; Billing</h1><p>Manage your subscription</p></div></div>
+
+    <div class="grid g-3">
+      <div class="card">
+        <div style="color:var(--muted);font-size:12px;font-weight:600;margin-bottom:8px">FREE</div>
+        <div style="font-size:32px;font-weight:800">&#x20AC;0<span style="font-size:14px;color:var(--muted)">/mo</span></div>
+        <ul style="list-style:none;font-size:13px;margin:16px 0;display:flex;flex-direction:column;gap:7px">
+          <li style="color:var(--text)">&#x2713; HTML Page Cache</li>
+          <li style="color:var(--text)">&#x2713; Lazy Load Images</li>
+          <li style="color:var(--text)">&#x2713; JS Defer (safe)</li>
+          <li style="color:var(--text)">&#x2713; Remove WP Bloat</li>
+          <li style="color:var(--muted)">&#x2717; Critical CSS</li>
+          <li style="color:var(--muted)">&#x2717; AI Optimization</li>
+          <li style="color:var(--muted)">&#x2717; SaaS Dashboard</li>
+        </ul>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center">Download Free</button>
+      </div>
+      <div class="card card-hl" style="position:relative">
+        <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--accent);color:#04090f;font-size:11px;font-weight:700;padding:3px 14px;border-radius:20px">POPULAR</div>
+        <div style="color:var(--accent);font-size:12px;font-weight:600;margin-bottom:8px">PRO</div>
+        <div style="font-size:32px;font-weight:800">&#x20AC;10<span style="font-size:14px;color:var(--muted)">/mo</span></div>
+        <ul style="list-style:none;font-size:13px;margin:16px 0;display:flex;flex-direction:column;gap:7px">
+          <li style="color:var(--text)">&#x2713; Everything in Free</li>
+          <li style="color:var(--text)">&#x2713; AI Critical CSS</li>
+          <li style="color:var(--text)">&#x2713; LCP Preload</li>
+          <li style="color:var(--text)">&#x2713; Delay JS Intelligent</li>
+          <li style="color:var(--text)">&#x2713; Speculation Rules</li>
+          <li style="color:var(--text)">&#x2713; SaaS Dashboard</li>
+          <li style="color:var(--muted)">&#x2717; Multi-site</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="checkout('pro')">Upgrade to PRO &#x2192;</button>
+      </div>
+      <div class="card card-purple">
+        <div style="color:#a78bfa;font-size:12px;font-weight:600;margin-bottom:8px">AGENCY</div>
+        <div style="font-size:32px;font-weight:800">&#x20AC;29<span style="font-size:14px;color:var(--muted)">/mo</span></div>
+        <ul style="list-style:none;font-size:13px;margin:16px 0;display:flex;flex-direction:column;gap:7px">
+          <li style="color:var(--text)">&#x2713; Everything in PRO</li>
+          <li style="color:var(--text)">&#x2713; Unlimited Sites</li>
+          <li style="color:var(--text)">&#x2713; Priority API</li>
+          <li style="color:var(--text)">&#x2713; Bulk Optimization</li>
+          <li style="color:var(--text)">&#x2713; White Label</li>
+          <li style="color:var(--text)">&#x2713; Client Reports</li>
+          <li style="color:var(--text)">&#x2713; Priority Support</li>
+        </ul>
+        <button class="btn btn-purple" style="width:100%;justify-content:center" onclick="checkout('agency')">Get Agency &#x2192;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN ───────────────────────────────────────────────────────── -->
+  <div class="page" id="page-admin">
+    <div class="page-header"><div><h1>Admin Panel</h1><p>Manage licenses, users, and API stats</p></div></div>
+
+    <div class="grid g-4" id="admin-stats">
+      <div class="card"><div class="card-val" id="as-users">—</div><div class="card-lbl">Total Users</div></div>
+      <div class="card"><div class="card-val" id="as-lic">—</div><div class="card-lbl">Active Licenses</div></div>
+      <div class="card"><div class="card-val" id="as-sites">—</div><div class="card-lbl">Registered Sites</div></div>
+      <div class="card"><div class="card-val" id="as-calls">—</div><div class="card-lbl">API Calls Today</div></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Create Manual License</h3>
+      <div class="form-row" style="flex-wrap:wrap">
+        <div class="form-group" style="width:100px"><label>User ID</label><input id="adm-uid" type="number" placeholder="1"></div>
+        <div class="form-group" style="width:130px"><label>Plan</label><select id="adm-plan"><option value="pro">PRO</option><option value="agency">AGENCY</option></select></div>
+        <div class="form-group" style="width:110px"><label>Days valid</label><input id="adm-days" type="number" placeholder="365"></div>
+        <button class="btn btn-primary" onclick="adminCreateLic()" style="align-self:flex-end">Create License</button>
+      </div>
+      <div id="adm-result" style="margin-top:12px;display:none;font-family:var(--mono);font-size:13px;color:var(--green)"></div>
+    </div>
+
+    <div class="alert ai">
+      &#x2139;&#xFE0F; This panel makes live API calls to <code style="font-family:var(--mono)">http://localhost:3000/api</code>.
+      Set <code style="font-family:var(--mono)">ADMIN_KEY</code> in your .env and enter it below to unlock admin routes.
+      <input id="adminKeyInput" style="margin-left:10px;width:280px;padding:5px 10px;font-size:12px" placeholder="Enter ADMIN_KEY from .env">
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /shell -->
+</div><!-- /app -->
+
+<script>
+const API = 'http://localhost:3000/api';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let token    = localStorage.getItem('wpai_tok') ?? null;
+let userData = JSON.parse(localStorage.getItem('wpai_user') ?? 'null');
+let lastAnalysis = null;
+
+const DEMO_SITES = [
+  { url:'https://myblog.com',       score:91, lcp:'1.4s', cls:'0.04', inp:'130ms', plan:'pro',    last:'2 min ago' },
+  { url:'https://shop.mystore.io',  score:74, lcp:'2.8s', cls:'0.12', inp:'280ms', plan:'pro',    last:'1 hr ago'  },
+  { url:'https://agency-client.fr', score:65, lcp:'3.5s', cls:'0.21', inp:'420ms', plan:'agency', last:'3 hr ago'  },
+];
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) return showLoginErr('Please fill in both fields.');
+  if (email === 'demo@wpai.com' && pass === 'demo') {
+    token = 'demo'; userData = { id: 0, email: 'demo@wpai.com' };
+    showApp();
+  } else {
+    fetch(`${API}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password:pass}) })
+      .then(r => r.json())
+      .then(d => {
+        if (d.token) {
+          token = d.token; userData = d.user;
+          localStorage.setItem('wpai_tok', token);
+          localStorage.setItem('wpai_user', JSON.stringify(userData));
+          showApp();
+        } else showLoginErr(d.error ?? 'Login failed.');
+      })
+      .catch(() => showLoginErr('Cannot connect to API. Use demo@wpai.com / demo for demo.'));
+  }
+}
+function showLoginErr(msg) { const el=document.getElementById('loginErr'); el.textContent=msg; el.style.display='flex'; }
+function logout() { localStorage.removeItem('wpai_tok'); localStorage.removeItem('wpai_user'); location.reload(); }
+function showApp() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('uEmail').textContent = userData?.email ?? 'demo@wpai.com';
+  const initials = (userData?.email?.[0] ?? 'D').toUpperCase();
+  document.getElementById('uAvatar').textContent = initials;
+  renderDashboard();
+  renderSites();
+  setAITip();
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function nav(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (el) el.classList.add('active');
+  else { document.querySelectorAll('.nav-item').forEach(n => { if (n.getAttribute('onclick')?.includes("'"+id+"'")) n.classList.add('active'); }); }
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const avg = Math.round(DEMO_SITES.reduce((a,s) => a+s.score, 0) / DEMO_SITES.length);
+  document.getElementById('d-sites').textContent = DEMO_SITES.length;
+  document.getElementById('d-score').textContent = avg;
+  document.getElementById('d-score').className   = 'card-val ' + scoreClass(avg);
+  const tbody = document.getElementById('d-sites-tbl');
+  tbody.innerHTML = '';
+  DEMO_SITES.forEach(s => {
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:500">${s.url}</td>
+      <td><b class="${scoreClass(s.score)}">${s.score}</b></td>
+      <td style="font-family:var(--mono)">${s.lcp}</td>
+      <td><span class="badge ${planBadge(s.plan)}">${s.plan.toUpperCase()}</span></td>
+      <td><button class="btn btn-primary btn-sm" onclick="quickAnalyze('${s.url}')">Optimize</button></td>
+    </tr>`;
+  });
+}
+function refreshDashboard() { renderDashboard(); setAITip(); }
+function setAITip() {
+  const tips = [
+    '&#x1F916; AI Tip: Your homepage LCP is 2.4s — preloading the hero image could reduce it to under 1.8s.',
+    '&#x1F4A1; Tip: Generating Critical CSS for shop.mystore.io could improve FCP by ~40%.',
+    '&#x26A1; Tip: Enabling Speculation Rules prefetch on agency-client.fr could make navigation feel instant.',
+    '&#x1F9F9; Tip: Removing WooCommerce cart fragments polling on non-cart pages could save 120ms TTFB.',
+  ];
+  const el = document.getElementById('d-ai-tip');
+  el.innerHTML = tips[Math.floor(Math.random() * tips.length)];
+}
+
+// ── Sites ──────────────────────────────────────────────────────────────────
+function renderSites() {
+  const tbody = document.getElementById('sites-tbl');
+  tbody.innerHTML = '';
+  DEMO_SITES.forEach((s, i) => {
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:500">${s.url}</td>
+      <td><b class="${scoreClass(s.score)}">${s.score}</b></td>
+      <td style="font-family:var(--mono)">${s.lcp}</td>
+      <td><span class="badge ${planBadge(s.plan)}">${s.plan.toUpperCase()}</span></td>
+      <td style="color:var(--muted)">${s.last}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="quickAnalyze('${s.url}')">&#x1F50D; Analyze</button>
+        <button class="btn btn-ghost btn-sm" onclick="removeSite(${i})">&#x1F5D1;</button>
+      </td>
+    </tr>`;
+  });
+}
+function showAddSite()  { document.getElementById('add-site-form').style.display = 'block'; }
+function hideAddSite()  { document.getElementById('add-site-form').style.display = 'none'; }
+function addSite() {
+  const url  = document.getElementById('newUrl').value.trim();
+  const plan = document.getElementById('newPlan').value;
+  if (!url) return;
+  DEMO_SITES.push({ url, score: Math.floor(Math.random()*25+60), lcp: (Math.random()*2+1.5).toFixed(1)+'s', cls:'0.08', inp:'200ms', plan, last:'just now' });
+  renderSites(); renderDashboard(); hideAddSite();
+  document.getElementById('newUrl').value = '';
+}
+function removeSite(i) { if (confirm('Remove this site?')) { DEMO_SITES.splice(i,1); renderSites(); renderDashboard(); } }
+
+// ── Performance ────────────────────────────────────────────────────────────
+async function analyzeSite() {
+  const url = document.getElementById('analyzeUrl').value.trim();
+  if (!url) return;
+  document.getElementById('perf-loading').style.display = 'flex';
+  document.getElementById('perf-results').style.display = 'none';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  await new Promise(r => setTimeout(r, 1200)); // Simulate API call
+
+  const score = Math.floor(Math.random()*28+62);
+  const lcp   = parseFloat((Math.random()*2.5+0.8).toFixed(2));
+  const cls   = parseFloat((Math.random()*0.18).toFixed(3));
+  const inp   = Math.floor(Math.random()*200+80);
+  const ttfb  = Math.floor(Math.random()*350+80);
+  const fcp   = parseFloat((Math.random()*1.5+0.5).toFixed(2));
+
+  lastAnalysis = { url, score, lcp, cls, inp, ttfb, fcp };
+
+  const sc = scoreClass(score);
+  document.getElementById('r-score').textContent = score;
+  document.getElementById('r-score').className = 'card-val ' + sc;
+  const bar = document.getElementById('r-score-bar');
+  bar.style.width = score + '%';
+  bar.className = 'progress-bar ' + (score>=90?'pb-good':score>=70?'pb-med':'pb-bad');
+
+  setVital('r-lcp',  lcp+'s',   lcp<=2.5?'good':lcp<=4?'med':'bad');
+  setVital('r-cls',  cls,       cls<=0.1?'good':cls<=0.25?'med':'bad');
+  setVital('r-inp',  inp+'ms',  inp<=200?'good':inp<=500?'med':'bad');
+  setVital('r-ttfb', ttfb+'ms', ttfb<=200?'good':ttfb<=600?'med':'bad');
+  setVital('r-fcp',  fcp+'s',   fcp<=1.8?'good':fcp<=3?'med':'bad');
+
+  const suggestions = [];
+  if (lcp > 2.5) suggestions.push({ icon:'&#x1F5BC;', impact:'high',   text:'Preload your LCP hero image with fetchpriority=high to reduce LCP by ~0.8s' });
+  if (cls > 0.1) suggestions.push({ icon:'&#x1F4CF;', impact:'high',   text:'Add explicit width/height on images and ads to eliminate layout shifts' });
+  if (inp > 200) suggestions.push({ icon:'&#x1F4E6;', impact:'medium', text:'Delay analytics and chat widgets until after first user interaction' });
+  if (ttfb > 300)suggestions.push({ icon:'&#x26A1;',  impact:'medium', text:'Enable server-side HTML cache to reduce TTFB from '+ttfb+'ms to under 200ms' });
+  suggestions.push({ icon:'&#x1F3A8;', impact:'high',   text:'Generate Critical CSS to eliminate render-blocking stylesheets (PRO feature)' });
+  suggestions.push({ icon:'&#x1F52E;', impact:'low',    text:'Enable Speculation Rules API to prefetch internal pages on hover (Chrome 109+)' });
+
+  const el = document.getElementById('r-suggestions');
+  el.innerHTML = '';
+  suggestions.forEach(s => {
+    el.innerHTML += `<div class="suggestion"><span class="sug-icon">${s.icon}</span><div class="sug-text">${s.text}<div class="sug-impact ${s.impact}">${s.impact.toUpperCase()} impact</div></div></div>`;
+  });
+
+  document.getElementById('perf-loading').style.display = 'none';
+  document.getElementById('perf-results').style.display = 'flex';
+  document.getElementById('analyzeBtn').disabled = false;
+}
+function setVital(id, val, cls) {
+  const el = document.getElementById(id);
+  el.textContent = val;
+  el.className = 'vital-val ' + cls;
+}
+function quickAnalyze(url) {
+  document.getElementById('analyzeUrl').value = url;
+  nav('performance', null);
+  analyzeSite();
+}
+async function generateCriticalCSS() {
+  const url = document.getElementById('analyzeUrl').value.trim();
+  if (!url) return alert('Please enter a URL first.');
+  alert('&#x1F3A8; Critical CSS generation started for:
+' + url + '
+
+In production this calls /api/optimize/critical-css via Puppeteer and returns the CSS to inject.');
+}
+function copyReport() {
+  if (!lastAnalysis) return;
+  const r = lastAnalysis;
+  const text = `WP AI Ultra Optimizer — Performance Report
+URL: ${r.url}
+Score: ${r.score}/100
+LCP: ${r.lcp}s | CLS: ${r.cls} | INP: ${r.inp}ms | TTFB: ${r.ttfb}ms | FCP: ${r.fcp}s
+Generated: ${new Date().toISOString()}`;
+  navigator.clipboard.writeText(text).then(() => alert('Report copied to clipboard!'));
+}
+
+// ── License ────────────────────────────────────────────────────────────────
+function activateLic() {
+  const key = document.getElementById('newLicKey').value.trim();
+  if (!key) return;
+  const msg = document.getElementById('lic-msg');
+  // Real: POST /api/license/validate
+  document.getElementById('l-key').textContent  = key.slice(0,9) + '****-****';
+  document.getElementById('l-plan').textContent = key.includes('AGN') ? 'AGENCY' : 'PRO';
+  document.getElementById('l-exp').textContent  = '2026-12-31';
+  document.getElementById('l-status').textContent = 'Active';
+  document.getElementById('l-status').className = 'badge bs';
+  msg.className = 'alert as'; msg.textContent = '&#x2705; License activated successfully!'; msg.style.display = 'flex';
+  setTimeout(() => msg.style.display = 'none', 4000);
+}
+
+// ── Billing ────────────────────────────────────────────────────────────────
+function checkout(plan) {
+  const prices = { pro: 'price_pro_monthly', agency: 'price_agency_monthly' };
+  fetch(`${API}/stripe/create-checkout`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ price_id: prices[plan], success_url: window.location.href+'?success=1', cancel_url: window.location.href })
+  })
+  .then(r => r.json())
+  .then(d => { if (d.url) window.location.href = d.url; else alert('Redirecting to Stripe for '+plan.toUpperCase()+'...'); })
+  .catch(() => alert('Connect your Stripe keys in the API .env to enable payments.'));
+}
+
+// ── Admin ──────────────────────────────────────────────────────────────────
+function adminCreateLic() {
+  const uid  = document.getElementById('adm-uid').value;
+  const plan = document.getElementById('adm-plan').value;
+  const days = document.getElementById('adm-days').value;
+  const key  = document.getElementById('adminKeyInput').value.trim();
+  if (!uid || !key) return alert('Fill in User ID and Admin Key.');
+  fetch(`${API}/license/create`, {
+    method:'POST', headers:{'Content-Type':'application/json','x-admin-key':key},
+    body: JSON.stringify({ user_id:uid, plan, expires_days:days||365 })
+  })
+  .then(r => r.json())
+  .then(d => {
+    const el = document.getElementById('adm-result');
+    el.style.display = 'block';
+    el.textContent = d.license_key ? '&#x2713; ' + d.license_key : JSON.stringify(d);
+  })
+  .catch(e => alert('API error: ' + e.message));
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function scoreClass(n) { return n>=90?'good':n>=70?'med':'bad'; }
+function planBadge(p)  { return p==='pro'?'bp':p==='agency'?'ba':'bf'; }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => { if (e.key==='Enter' && document.getElementById('loginWrap').style.display!=='none') doLogin(); });
+if (token && userData) showApp();
+</script>
+</body>
+</html>
