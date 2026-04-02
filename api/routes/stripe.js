@@ -9,6 +9,37 @@ const PLAN_MAP = {
     [process.env.STRIPE_PRICE_AGENCY]: 'agency',
 };
 
+const PLAN_PRICE_MAP = {
+    pro: process.env.STRIPE_PRICE_PRO,
+    agency: process.env.STRIPE_PRICE_AGENCY,
+};
+
+function getPaymentMethods(plan) {
+    const methods = [
+        {
+            id: 'stripe_card',
+            label: 'Card (Stripe)',
+            badge: 'INSTANT',
+            description: 'Visa / Mastercard via Stripe Checkout.',
+            enabled: Boolean(process.env.STRIPE_SECRET_KEY),
+        },
+        {
+            id: 'mada_mobile_money',
+            label: 'Mobile Money Madagascar',
+            badge: 'MADA',
+            description: process.env.MADA_MOBILE_MONEY_CHECKOUT_URL
+                ? 'Mvola, Orange Money, Airtel Money via local payment partner.'
+                : 'Mvola, Orange Money, Airtel Money (setup pending).',
+            enabled: Boolean(process.env.MADA_MOBILE_MONEY_CHECKOUT_URL),
+            setup_required: !process.env.MADA_MOBILE_MONEY_CHECKOUT_URL,
+            provider: process.env.MADA_MOBILE_MONEY_PROVIDER ?? 'local-partner',
+            plan,
+        },
+    ];
+
+    return methods;
+}
+
 // Helper: find or create a user by email
 function upsertUser(email) {
     const db = getDb();
@@ -42,6 +73,41 @@ router.post('/create-checkout', async (req, res) => {
         console.error('[Stripe checkout]', e.message);
         res.status(500).json({ error: e.message });
     }
+});
+
+// GET /api/stripe/payment-options
+router.get('/payment-options', (req, res) => {
+    const plan = ['pro', 'agency'].includes(req.query.plan) ? req.query.plan : 'pro';
+    res.json({
+        plan,
+        methods: getPaymentMethods(plan),
+        free_download_url: process.env.FREE_PLUGIN_DOWNLOAD_URL ?? '/wp-ai-optimizer.zip',
+        note: 'WordPress.org validation pending: Free and Paid are available directly on your website.',
+    });
+});
+
+// POST /api/stripe/create-mobile-money-intent
+router.post('/create-mobile-money-intent', (req, res) => {
+    const plan = ['pro', 'agency'].includes(req.body.plan) ? req.body.plan : 'pro';
+    const providerUrl = process.env.MADA_MOBILE_MONEY_CHECKOUT_URL;
+
+    if (!providerUrl) {
+        return res.status(503).json({
+            error: 'Mobile money checkout is not configured yet. Set MADA_MOBILE_MONEY_CHECKOUT_URL.',
+        });
+    }
+
+    const url = new URL(providerUrl);
+    url.searchParams.set('plan', plan);
+    url.searchParams.set('price_id', PLAN_PRICE_MAP[plan] ?? process.env.STRIPE_PRICE_PRO ?? '');
+    if (req.body.success_url) url.searchParams.set('success_url', req.body.success_url);
+    if (req.body.cancel_url) url.searchParams.set('cancel_url', req.body.cancel_url);
+
+    return res.json({
+        provider: process.env.MADA_MOBILE_MONEY_PROVIDER ?? 'local-partner',
+        plan,
+        url: url.toString(),
+    });
 });
 
 // POST /api/stripe/webhook  — raw body (set in server.js)

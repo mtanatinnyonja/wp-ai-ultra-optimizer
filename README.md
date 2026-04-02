@@ -48,6 +48,9 @@ Open `landing/index.html` — deploy to Netlify, Vercel, or any web host.
 | `STRIPE_WEBHOOK_SECRET` | From Stripe webhook dashboard |
 | `STRIPE_PRICE_PRO` | Price ID for PRO plan |
 | `STRIPE_PRICE_AGENCY` | Price ID for AGENCY plan |
+| `MADA_MOBILE_MONEY_PROVIDER` | Mobile money provider name (ex: paydunya) |
+| `MADA_MOBILE_MONEY_CHECKOUT_URL` | Hosted checkout URL for Mvola/Orange/Airtel Money |
+| `FREE_PLUGIN_DOWNLOAD_URL` | Public URL for Free plugin ZIP download |
 | `JWT_SECRET` | Random secret for JWT tokens |
 | `ADMIN_KEY` | Admin API key for manual license creation |
 
@@ -72,9 +75,18 @@ Register these in your Stripe dashboard → `https://your-api.com/api/stripe/web
 | POST | `/api/license/validate` | Validate license key (called by WP plugin) |
 | POST | `/api/license/create` | Create license (admin only) |
 | POST | `/api/stripe/create-checkout` | Create Stripe checkout session |
+| GET | `/api/stripe/payment-options` | List payment methods for a plan |
+| POST | `/api/stripe/create-mobile-money-intent` | Create mobile money checkout redirect |
 | POST | `/api/stripe/webhook` | Stripe webhook handler |
 | POST | `/api/optimize/analyze` | Analyze URL performance |
 | POST | `/api/optimize/critical-css` | Generate Critical CSS via Puppeteer |
+
+## Free + Paid Rollout Before WordPress Validation
+
+- Keep Free distribution available directly from your website with `wp-ai-optimizer.zip`.
+- Keep PRO/AGENCY sales active via Stripe card checkout.
+- Enable Madagascar-friendly mobile money checkout with your provider URL (`MADA_MOBILE_MONEY_CHECKOUT_URL`).
+- Landing page now shows both tracks (Free and Paid) and lets users choose payment method.
 
 ## Plans
 

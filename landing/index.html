@@ -75,6 +75,26 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(4,9,15,.85);
 .price-btn.primary{background:var(--accent);color:#04090f}.price-btn.primary:hover{filter:brightness(1.1)}
 .price-btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}.price-btn.ghost:hover{border-color:var(--accent)}
 .price-btn.purple{background:#7c3aed;color:#fff}.price-btn.purple:hover{filter:brightness(1.1)}
+.stack-note{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.5}
+.stack-note strong{color:var(--text)}
+
+/* PAYMENT MODAL */
+.pay-modal{position:fixed;inset:0;background:rgba(4,9,15,.78);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;z-index:400}
+.pay-modal.open{display:flex}
+.pay-panel{width:min(860px,100%);background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.pay-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+.pay-head h3{font-size:18px;font-weight:800}
+.pay-close{background:none;border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:8px;cursor:pointer}
+.pay-close:hover{color:var(--text);border-color:var(--accent)}
+.pay-body{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.pay-option{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.pay-option h4{font-size:14px;font-weight:700}
+.pay-option p{font-size:12px;color:var(--muted);line-height:1.6;min-height:38px}
+.pay-badge{display:inline-flex;align-items:center;width:max-content;padding:2px 8px;border-radius:999px;background:rgba(0,212,255,.12);color:var(--accent);font-size:10px;font-weight:700;letter-spacing:.04em}
+.pay-action{margin-top:auto}
+.pay-action[disabled]{opacity:.55;cursor:not-allowed;filter:none}
+.pay-foot{padding:14px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.pay-foot strong{color:var(--text)}
 /* TESTIMONIALS */
 .testi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:48px}
 .testi-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px}
@@ -223,7 +243,8 @@ footer{border-top:1px solid var(--border);padding:40px;text-align:center;color:v
         <li class="no">LCP Preload</li>
         <li class="no">SaaS Dashboard</li>
       </ul>
-      <a href="https://wordpress.org/plugins/wp-ai-ultra-optimizer" class="price-btn ghost">Download Free</a>
+      <a href="#" class="price-btn ghost" onclick="downloadFreePlugin(event)">Download Free Plugin</a>
+      <p class="stack-note"><strong>WordPress.org:</strong> validation en cours. Le package Free est déjà disponible via download direct.</p>
     </div>
     <div class="price-card featured">
       <div class="price-badge">MOST POPULAR</div>
@@ -239,7 +260,8 @@ footer{border-top:1px solid var(--border);padding:40px;text-align:center;color:v
         <li class="ok">1 WordPress Site</li>
         <li class="no">Multi-site</li>
       </ul>
-      <a href="#" class="price-btn primary" onclick="startCheckout('pro')">Start PRO &mdash; &#x20AC;10/mo</a>
+      <a href="#" class="price-btn primary" onclick="openCheckoutModal(event, 'pro')">Start PRO &mdash; &#x20AC;10/mo</a>
+      <p class="stack-note">Paiement: Carte Stripe ou Mobile Money Madagascar (Mvola / Orange Money / Airtel Money via partenaire).</p>
     </div>
     <div class="price-card">
       <div class="price-plan">AGENCY</div>
@@ -254,7 +276,8 @@ footer{border-top:1px solid var(--border);padding:40px;text-align:center;color:v
         <li class="ok">Priority Support</li>
         <li class="ok">Reseller License</li>
       </ul>
-      <a href="#" class="price-btn purple" onclick="startCheckout('agency')">Get Agency &mdash; &#x20AC;29/mo</a>
+      <a href="#" class="price-btn purple" onclick="openCheckoutModal(event, 'agency')">Get Agency &mdash; &#x20AC;29/mo</a>
+      <p class="stack-note">Workflow client/agency prêt pendant l'attente de validation du plugin sur WordPress.org.</p>
     </div>
   </div>
 </section>
@@ -298,14 +321,123 @@ footer{border-top:1px solid var(--border);padding:40px;text-align:center;color:v
   <p style="margin-top:8px"><a href="#" style="color:var(--muted);text-decoration:none">Privacy Policy</a> &mdash; <a href="#" style="color:var(--muted);text-decoration:none">Terms of Service</a> &mdash; <a href="dashboard/index.html" style="color:var(--muted);text-decoration:none">Dashboard</a></p>
 </footer>
 
+<div class="pay-modal" id="payModal" aria-hidden="true">
+  <div class="pay-panel">
+    <div class="pay-head">
+      <h3 id="payTitle">Choose payment method</h3>
+      <button class="pay-close" onclick="closeCheckoutModal()">✕</button>
+    </div>
+    <div class="pay-body" id="payBody"></div>
+    <div class="pay-foot" id="payFoot">
+      Powered by Stripe + local partner payment rails for Madagascar.
+    </div>
+  </div>
+</div>
+
 <script>
-function startCheckout(plan){
-  const prices={pro:'price_pro_monthly',agency:'price_agency_monthly'};
-  fetch('http://localhost:3000/api/stripe/create-checkout',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({price_id:prices[plan],success_url:window.location.origin+'/success',cancel_url:window.location.href})
-  }).then(r=>r.json()).then(d=>{if(d.url)window.location.href=d.url;else alert('Redirecting to Stripe checkout for '+plan.toUpperCase()+'...')}).catch(()=>alert('Stripe checkout: connect your API and Stripe keys to activate payments.'));
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api';
+const PRICES = { pro:'price_pro_monthly', agency:'price_agency_monthly' };
+let selectedPlan = 'pro';
+
+function downloadFreePlugin(event){
+  event.preventDefault();
+  const directUrl = window.location.origin + '/wp-ai-optimizer.zip';
+  window.location.href = directUrl;
 }
+
+function openCheckoutModal(event, plan){
+  event.preventDefault();
+  selectedPlan = plan;
+  document.getElementById('payTitle').textContent = `Choose payment method — ${plan.toUpperCase()}`;
+  document.getElementById('payBody').innerHTML = '<div class="pay-option"><h4>Loading payment options...</h4><p>Please wait.</p></div>';
+  document.getElementById('payModal').classList.add('open');
+  loadPaymentOptions(plan);
+}
+
+function closeCheckoutModal(){
+  document.getElementById('payModal').classList.remove('open');
+}
+
+async function loadPaymentOptions(plan){
+  try {
+    const res = await fetch(`${API_BASE}/stripe/payment-options?plan=${encodeURIComponent(plan)}`);
+    const data = await res.json();
+    const options = Array.isArray(data.methods) && data.methods.length ? data.methods : defaultPaymentOptions(plan);
+    renderPaymentOptions(options, data.note || 'Choose the method that fits your clients best.');
+  } catch (_e) {
+    renderPaymentOptions(defaultPaymentOptions(plan), 'API not reachable. Fallback options shown for demo/prototyping.');
+  }
+}
+
+function defaultPaymentOptions(plan){
+  return [
+    { id:'stripe_card', label:'Card (Stripe)', badge:'INSTANT', description:'Visa / Mastercard international cards via secure Stripe Checkout.' },
+    { id:'mada_mobile_money', label:'Mobile Money Madagascar', badge:'MADA', description:'Mvola, Orange Money, Airtel Money via local payment partner.' },
+  ];
+}
+
+function renderPaymentOptions(options, note){
+  const body = document.getElementById('payBody');
+  body.innerHTML = options.map(o => `
+    <div class="pay-option">
+      <span class="pay-badge">${o.badge || 'PAY'}</span>
+      <h4>${o.label}</h4>
+      <p>${o.description || ''}</p>
+      <button class="price-btn ${o.id === 'stripe_card' ? 'primary' : 'ghost'} pay-action" ${o.enabled === false ? 'disabled' : ''} onclick="startCheckout('${o.id}')">
+        ${o.enabled === false ? 'Setup pending' : 'Continue'}
+      </button>
+    </div>
+  `).join('');
+  document.getElementById('payFoot').innerHTML = note;
+}
+
+async function startCheckout(method){
+  if (method === 'stripe_card') {
+    try {
+      const r = await fetch(`${API_BASE}/stripe/create-checkout`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          price_id: PRICES[selectedPlan],
+          success_url: window.location.origin + '/success',
+          cancel_url: window.location.href
+        })
+      });
+      const d = await r.json();
+      if (d.url) {
+        window.location.href = d.url;
+        return;
+      }
+      alert(d.error || 'Unable to start Stripe checkout.');
+    } catch (_e) {
+      alert('Stripe checkout unavailable right now.');
+    }
+    return;
+  }
+
+  if (method === 'mada_mobile_money') {
+    try {
+      const r = await fetch(`${API_BASE}/stripe/create-mobile-money-intent`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          plan: selectedPlan,
+          success_url: window.location.origin + '/success',
+          cancel_url: window.location.href
+        })
+      });
+      const d = await r.json();
+      if (d.url) {
+        window.location.href = d.url;
+        return;
+      }
+      alert(d.error || 'Mobile money checkout unavailable.');
+    } catch (_e) {
+      alert('Mobile money checkout unavailable right now.');
+    }
+  }
+}
+
 // Animate on scroll
 const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity=1;e.target.style.transform='translateY(0)'}})},{threshold:.1});
 document.querySelectorAll('.feature-card,.testi-card,.price-card,.vital-card').forEach(el=>{el.style.opacity=0;el.style.transform='translateY(20px)';el.style.transition='opacity .4s ease,transform .4s ease';observer.observe(el)});
